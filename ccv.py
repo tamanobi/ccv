@@ -63,12 +63,18 @@ def ccv(src, tau=0):
         beta[bin_idx] = beta[bin_idx] + area_size
   return alpha, beta
 
-def ccv_plot(alpha, beta):
+def ccv_plot(img, alpha, beta):
   import matplotlib.pyplot as plt
   X = [x for x in range(8)]
   Y = alpha.tolist()+beta.tolist()
+  with open('ccv.csv','w') as f:
+    f.write(str(Y))
+  im = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+  plt.subplot(2,1,1)
+  plt.imshow(im)
+  plt.subplot(2,1,2)
   plt.bar(X, Y, align='center')
-  plt.yscale('log')
+  #plt.yscale('log')
   plt.xticks(X, (['alpha']*4)+(['beta']*4))
   plt.show()  
 
@@ -78,4 +84,4 @@ if __name__ == '__main__':
   img = cv2.imread(argvs[1])
   alpha, beta = ccv(img)
   print alpha.tolist()+beta.tolist()
-  ccv_plot(alpha, beta)
+  ccv_plot(img, alpha, beta)
