@@ -53,11 +53,12 @@ def ccv(src, tau=0, n=64):
     for a,c in zip(areas,coord):
       area_size = a[0]
       x,y = c[0], c[1]
-      bin_idx = int(ch[y,x]//(256//n))
-      if area_size >= tau:
-        alpha[bin_idx] = alpha[bin_idx] + area_size
-      else:
-        beta[bin_idx] = beta[bin_idx] + area_size
+      if (x < ch.shape[1]) and (y < ch.shape[0]):
+        bin_idx = int(ch[y,x]//(256//n))
+        if area_size >= tau:
+          alpha[bin_idx] = alpha[bin_idx] + area_size
+        else:
+          beta[bin_idx] = beta[bin_idx] + area_size
   return alpha, beta
 
 def ccv_plot(img, alpha, beta, n=64):
@@ -79,9 +80,9 @@ if __name__ == '__main__':
   argvs = sys.argv
   argc = len(argvs)
   img = cv2.imread(argvs[1])
-  print img.size
   n = int(argvs[2])
-  alpha, beta = ccv(img, n)
+  alpha, beta = ccv(img, tau=0,n=n)
   CCV = alpha.tolist()+beta.tolist()
-  print CCV, sum(CCV)
+  assert(sum(CCV) == img.size)
+  assert(n == len(alpha) and n == len(beta))
   ccv_plot(img, alpha, beta, n)
