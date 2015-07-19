@@ -35,6 +35,14 @@ def ColorPalette(n=64):
   #cv2.waitKey(0)
   return colors
 
+"""
+
+1. blur
+2. quantizing color
+3. Binarization
+4. Labeling
+5. Counting
+"""
 def ccv(src):
   img = src.copy()
   row, col, channels = img.shape
@@ -48,23 +56,13 @@ def ccv(src):
   img = QuantizeColor(img)
   bgr = cv2.split(img)
   #bgr = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2HSV))
-#colors = ColorPalette(64)
   tau = row*col * 0.1
   alpha = np.zeros(4)
   beta = np.zeros(4)
   # labeling
   for i,ch in enumerate(bgr):
     ret,th = cv2.threshold(ch,127,255,0)
-    #image, cnts, hierarchy = cv2.findContours(th,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
     ret, labeled, stat, centroids = cv2.connectedComponentsWithStats(th, None, cv2.CC_STAT_AREA, None, connectivity=8)
-#    label_img = np.empty(img.shape, dtype=np.uint8)
-#    for y in range(row):
-#      for x in range(col):
-#        idx = labeled[y,x]
-#        if idx > -1:
-#          label_img[y,x] = colors[idx]
-#        else:
-#          label_img[y,x] = 0
     #!see https://github.com/atinfinity/lab/wiki/OpenCV%E3%82%92%E4%BD%BF%E3%81%A3%E3%81%9F%E3%83%A9%E3%83%99%E3%83%AA%E3%83%B3%E3%82%B0#samplecode
     #!see http://docs.opencv.org/3.0.0/d3/dc0/group__imgproc__shape.html#gac7099124c0390051c6970a987e7dc5c5
     # generate ccv
@@ -82,7 +80,7 @@ def ccv(src):
 if __name__ == '__main__':
   argvs = sys.argv
   argc = len(argvs)
-  img = cv2.imread('./query/test20.jpg')
+  img = cv2.imread(argvs[1])
   alpha, beta = ccv(img)
   print np.linalg.norm(alpha-beta)
   print alpha+beta
