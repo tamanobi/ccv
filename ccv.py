@@ -3,18 +3,15 @@ import sys
 import numpy as np
 import cv2
 
-def QuantizeColor(img):
+def QuantizeColor(img, n=64):
+  div = 256//n
   rgb = cv2.split(img)
-  for col in rgb:
-    idx = np.where(col < 64)
-    col[idx] = 32
-    idx = np.where((64<=col)&(col<128))
-    col[idx] = 96
-    idx = np.where((128<=col)&(col<196))
-    col[idx] = 160
-    idx = np.where(196<=col)
-    col[idx] = 224
-  d_img = cv2.merge(rgb)
+  q = []
+  for ch in rgb:
+    vf = np.vectorize(lambda x, div: int(x//div)*div)
+    quantized = vf(ch, div)
+    q.append(quantized.astype(np.uint8))
+  d_img = cv2.merge(q)
   return d_img
 
 """
@@ -26,7 +23,7 @@ Proccess of Computing CCV(color coherence vector)
 4. Labeling
 5. Counting
 """
-def ccv(src, tau=0):
+def ccv(src, tau=0, n=64):
   img = src.copy()
   row, col, channels = img.shape
   if not col == 300:
@@ -36,13 +33,13 @@ def ccv(src, tau=0):
   # blur
   img = cv2.GaussianBlur(img, (3,3),0)
   # quantize color
-  img = QuantizeColor(img)
+  img = QuantizeColor(img, n)
   bgr = cv2.split(img)
   #bgr = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2HSV))
   if tau == 0:
     tau = row*col * 0.1
-  alpha = np.zeros(4)
-  beta = np.zeros(4)
+  alpha = np.zeros(n)
+  beta = np.zeros(n)
   # labeling
   for i,ch in enumerate(bgr):
     ret,th = cv2.threshold(ch,127,255,0)
@@ -56,16 +53,16 @@ def ccv(src, tau=0):
     for a,c in zip(areas,coord):
       area_size = a[0]
       x,y = c[0], c[1]
-      bin_idx = int(ch[y,x]//(64+1))
+      bin_idx = int(ch[y,x]//(256//n))
       if area_size >= tau:
         alpha[bin_idx] = alpha[bin_idx] + area_size
       else:
         beta[bin_idx] = beta[bin_idx] + area_size
   return alpha, beta
 
-def ccv_plot(img, alpha, beta):
+def ccv_plot(img, alpha, beta, n=64):
   import matplotlib.pyplot as plt
-  X = [x for x in range(8)]
+  X = [x for x in range(n*2)]
   Y = alpha.tolist()+beta.tolist()
   with open('ccv.csv','w') as f:
     f.write(str(Y))
@@ -75,13 +72,16 @@ def ccv_plot(img, alpha, beta):
   plt.subplot(2,1,2)
   plt.bar(X, Y, align='center')
   #plt.yscale('log')
-  plt.xticks(X, (['alpha']*4)+(['beta']*4))
+  #plt.xticks(X, (['alpha']*n)+(['beta']*n))
   plt.show()  
 
 if __name__ == '__main__':
   argvs = sys.argv
   argc = len(argvs)
   img = cv2.imread(argvs[1])
-  alpha, beta = ccv(img)
-  print alpha.tolist()+beta.tolist()
-  ccv_plot(img, alpha, beta)
+  print img.size
+  n = int(argvs[2])
+  alpha, beta = ccv(img, n)
+  CCV = alpha.tolist()+beta.tolist()
+  print CCV, sum(CCV)
+  ccv_plot(img, alpha, beta, n)
