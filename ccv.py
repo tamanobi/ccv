@@ -17,37 +17,20 @@ def QuantizeColor(img):
   d_img = cv2.merge(rgb)
   return d_img
 
-#!see http://homepage3.nifty.com/ishidate/vcpp_color/vcpp_color.htm
-def ColorPalette(n=64):
-  pallete = np.empty((1,n,3),dtype=np.uint8)
-  pallete.fill(255)
-  hsv = cv2.cvtColor(pallete, cv2.COLOR_BGR2HSV)
-  hsv_ch = cv2.split(hsv)
-  hsv_ch[0].fill(255)
-  hsv_ch[1].fill(255)
-  for i in range(n):
-    hsv_ch[0][0,i] = i*255/n
-    if i % 2 == 1:
-      hsv_ch[2][0,i] = 128
-  color_palette = cv2.cvtColor(cv2.merge(hsv_ch), cv2.COLOR_HSV2BGR)
-  colors = [[pix for pix in color_palette[0,i]] for i in range(n)]
-  #cv2.imshow('palette', cv2.resize(color_palette, None, fx=8, fy=8, interpolation=cv2.INTER_NEAREST))
-  #cv2.waitKey(0)
-  return colors
-
 """
-
-1. blur
-2. quantizing color
-3. Binarization
+Proccess of Computing CCV(color coherence vector)
+@see http://vis.uky.edu/~cheung/courses/ee639_fall04/readings/ccv.pdf 
+1. Blur
+2. Quantizing color
+3. Thresholding
 4. Labeling
 5. Counting
 """
-def ccv(src):
+def ccv(src, tau=0):
   img = src.copy()
   row, col, channels = img.shape
-  if not row == 300:
-    aspect = 300.0/row
+  if not col == 300:
+    aspect = 300.0//col
     img = cv2.resize(img, None, fx=aspect, fy=aspect, interpolation = cv2.INTER_CUBIC)
   row, col, channels = img.shape
   # blur
@@ -56,7 +39,8 @@ def ccv(src):
   img = QuantizeColor(img)
   bgr = cv2.split(img)
   #bgr = cv2.split(cv2.cvtColor(img, cv2.COLOR_BGR2HSV))
-  tau = row*col * 0.1
+  if tau == 0:
+    tau = row*col * 0.1
   alpha = np.zeros(4)
   beta = np.zeros(4)
   # labeling
@@ -68,19 +52,30 @@ def ccv(src):
     # generate ccv
     areas = [[v[4],label_idx] for label_idx,v in enumerate(stat)]
     coord = [[v[0],v[1]] for label_idx,v in enumerate(stat)]
+    # Counting
     for a,c in zip(areas,coord):
+      area_size = a[0]
       x,y = c[0], c[1]
-      idx = ch[y,x]/(64+1)
-      if a[0] >= tau:
-        alpha[idx] = alpha[idx] + a[0]
+      bin_idx = int(ch[y,x]//(64+1))
+      if area_size >= tau:
+        alpha[bin_idx] = alpha[bin_idx] + area_size
       else:
-        beta[idx] = beta[idx] + a[0]
+        beta[bin_idx] = beta[bin_idx] + area_size
   return alpha, beta
+
+def ccv_plot(alpha, beta):
+  import matplotlib.pyplot as plt
+  X = [x for x in range(8)]
+  Y = alpha.tolist()+beta.tolist()
+  plt.bar(X, Y, align='center')
+  plt.yscale('log')
+  plt.xticks(X, (['alpha']*4)+(['beta']*4))
+  plt.show()  
 
 if __name__ == '__main__':
   argvs = sys.argv
   argc = len(argvs)
   img = cv2.imread(argvs[1])
   alpha, beta = ccv(img)
-  print np.linalg.norm(alpha-beta)
-  print alpha+beta
+  print alpha.tolist()+beta.tolist()
+  ccv_plot(alpha, beta)
